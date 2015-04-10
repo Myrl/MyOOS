@@ -190,28 +190,221 @@ load_modules:
 	mov ecx, [ebx + 20]
 	mov edx, [ebx + 24]
 	.loop:
-		jecxz temp
+		jecxz finish
 		call load_module
 		add edx, 16
 		dec ecx
 		jmp .loop
 finish:
 	sti
-temp_0:
-	mov ecx, 0
 temp:
-	mov al, [hi + ecx]
-	and al, 0xff
-	jz _stop
-	push dword eax
-	mov eax, 0xb8000000
-	call run_module
-	pop dword eax
-	inc ecx
-	jmp temp
+	call print_mem_table
 _stop:
 	hlt
 	jmp _stop
 hi: db "Hello world!", 0
+tempbuff: resb 50
+;--------------------------------------------
+;; ecx = count
+;; edx = buffer
+pad_space:
+	jecxz .end
+	mov byte [edx + ecx], ' '
+	dec ecx
+	jmp pad_space
+
+	.end:
+		ret
+;; eax = number
+;; edx = buffer
+show_int:
+	push ecx
+	push edx
+	mov edx, .buf
+	.loop:
+		push edx
+		xchg ecx, edx
+		xor edx, edx
+		mov ecx, 10
+		div ecx
+		add edx, 0x30
+		xchg edx, ecx
+		pop edx
+		mov byte [edx], cl
+		inc edx
+		or eax, eax
+		jnz .loop
+
+	sub edx, .buf
+	mov ecx, edx
+	mov edx, [esp]
+	.lo1p:
+		jecxz .end
+		mov byte al, [.buf + ecx - 1]
+		mov byte [edx], al
+		inc edx
+		dec ecx
+		jmp .lo1p	
+	
+	.end:
+		pop edx
+		pop ecx
+		ret
+
+	.buf: resb 10
+;----------------
+show_hex_2:
+	push ecx
+	push edx
+	mov ecx, 8
+	.loop:
+		push ecx
+		mov cl, al
+		and cl, 0xf
+		cmp cl, 0xa
+		jb .else
+		add cl, 7	
+	.else:
+		add cl, 0x30
+		mov [.temp], eax
+		mov al, cl
+		pop ecx
+		mov byte [edx + ecx + 1], al
+		mov eax, [.temp]
+
+		shr eax, 4
+		dec ecx
+		jnz .loop
+	
+	.end:
+		mov byte [edx+1], 'x'
+		mov byte [edx], '0'
+		
+		pop edx
+		pop ecx
+		ret
+	.temp dd 0
+;------------------------
+show_hex:
+	push ecx
+	push edx
+	mov edx, .buf
+	.loop:
+		mov cl, al
+		and cl, 0xf
+		cmp cl, 0xa
+		jb .else
+		add cl, 7	
+	.else:
+		add cl, 0x30
+		mov byte [edx], cl
+		inc edx
+		shr eax, 4
+		jnz .loop
+	
+	mov byte [edx], 'x'
+	inc edx
+	mov byte [edx], '0'
+	inc edx
+	sub edx, .buf
+	mov ecx, edx
+	mov edx, [esp]
+	.lo1p:
+		jecxz .end
+		mov byte al, [.buf + ecx - 1]
+		mov byte [edx], al
+		inc edx
+		dec ecx
+		jmp .lo1p	
+	
+	.end:
+		pop edx
+		pop ecx
+		ret
+
+	.buf: resb 10
+;---------------------
+print_mem_table:
+	push ecx
+	push edx
+	mov ecx, [ebx + 44]
+	add ecx, [ebx + 48]
+	mov edx, [ebx + 48]
+	
+	.loop:
+		cmp edx, ecx
+		jnb .end
+
+		push edx
+		push ecx
+		mov edx, .buf0
+		mov ecx, 10
+		call pad_space
+		mov edx, .buf1
+		mov ecx, 10
+		call pad_space
+		pop ecx
+		pop edx		
+
+		mov eax, [edx]
+		push edx
+		mov edx, .buf0
+		call show_hex_2
+		pop edx
+	
+		mov eax, [edx + 8]	
+		push edx
+		mov edx, .buf1
+		call show_int
+		pop edx
+
+		push edx
+		mov edx, .mes0
+		call print_string
+		pop edx
+		
+		push edx
+		cmp dword [edx + 16], 1
+		jne .else
+		mov edx, .free
+		jmp .end_1
+		.else:
+		mov edx, .res
+		.end_1
+		call print_string
+		pop edx
+
+		add edx, [edx - 4]
+		add edx, 4
+		jmp .loop
+	.end:
+		pop edx
+		pop ecx
+		ret
+	.mes0: db "BASE "
+	.buf0: times 11 db ' '
+	.mes1: db "SIZE "
+	.buf1: times 11 db ' '
+	 db 0
+	.res: db "RESERVED", 10, 0
+	.free: db "FREE", 10, 0
+;---------------------------
+; edx = string
+print_string:
+	push edx
+	
+	.loop:
+		cmp byte [edx], 0
+		je .end
+		
+		mov eax, 0xb8000000
+		push dword [edx]
+		call run_module
+		pop eax
+		inc edx
+		jmp .loop
+	.end:
+		pop edx
+		ret
 _bss:
 _end:
