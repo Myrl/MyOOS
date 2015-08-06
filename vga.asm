@@ -1,13 +1,13 @@
 [BITS 32]
-
 org 0
 
 section .text
 
 id: dw 0xb800
-size: dw 2
+size: dw 3
 dd print_char 
 dd move_cursor
+dd change_color
 boot:
 	add esp, 4
 	pop ebp
@@ -52,7 +52,7 @@ print_char:
 move_cursor:
 	push ebx
 
-	mov dword eax, [ebp + 8]
+	mov word ax, [ebp + 8]
 	mov ebx, [ebp - 4]
 	mov word [ebx + index], ax
 
@@ -60,5 +60,18 @@ move_cursor:
 	add esp, 4
 	pop ebp
 	ret
+
+change_color:
+	push ebx
+	
+	mov byte ax, [ebp + 8]
+	mov ebx, [ebp - 4]
+	mov byte [ebx + color], al
+	
+	pop ebx
+	add esp, 4
+	pop ebp
+	ret
 global_variables:
 	index dw 0
+	color db 0x17
