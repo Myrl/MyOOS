@@ -113,3 +113,5 @@ _end:
 %if (($ - $$) > 0x100000)
   %error "Code too large"
 %endif
+
+; Vim: set ft=nasm:let b:syntastic_nasm_nasm_post_args="-f bin"

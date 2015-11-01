@@ -42,3 +42,5 @@ move_cursor:
 	ret
 global_variables:
 	index dw 0
+
+; Vim: set ft=nasm:let b:syntastic_nasm_nasm_post_args="-f bin"
